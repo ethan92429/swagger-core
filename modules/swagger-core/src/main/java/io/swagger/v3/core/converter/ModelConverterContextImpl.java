@@ -1,6 +1,7 @@
 package io.swagger.v3.core.converter;
 
 import io.swagger.v3.oas.models.media.Schema;
+
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+
+import com.fasterxml.jackson.databind.type.SimpleType;
+import com.fasterxml.jackson.databind.type.TypeBase;
 
 public class ModelConverterContextImpl implements ModelConverterContext {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModelConverterContextImpl.class);
@@ -50,6 +54,7 @@ public class ModelConverterContextImpl implements ModelConverterContext {
     public void defineModel(String name, Schema model, Type type, String prevName) {
         defineModel(name, model, new AnnotatedType().type(type), prevName);
     }
+
     @Override
     public void defineModel(String name, Schema model, AnnotatedType type, String prevName) {
         if (LOGGER.isTraceEnabled()) {
@@ -76,9 +81,15 @@ public class ModelConverterContextImpl implements ModelConverterContext {
 
         if (processedTypes.contains(type)) {
             return modelByType.get(type);
-        } else {
-            processedTypes.add(type);
         }
+        for (AnnotatedType annotatedType : processedTypes) {
+            if (annotatedType.getType() != null && type.getType() instanceof TypeBase && annotatedType.getType()
+                    .getTypeName()
+                    .equalsIgnoreCase(((TypeBase) type.getType()).toCanonical())) {
+                return modelByType.get(annotatedType);
+            }
+        }
+        processedTypes.add(type);
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug(String.format("resolve %s", type.getType()));
         }

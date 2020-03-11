@@ -25,9 +25,13 @@ public class ModelConverters {
     private final Set<String> skippedPackages = new HashSet<String>();
     private final Set<String> skippedClasses = new HashSet<String>();
 
+    private ModelConverterContextImpl context;
+
     public ModelConverters() {
         converters = new CopyOnWriteArrayList<>();
         converters.add(new ModelResolver(Json.mapper()));
+        context = new ModelConverterContextImpl(converters);
+
     }
 
     public static ModelConverters getInstance() {
@@ -92,8 +96,6 @@ public class ModelConverters {
     }
     public ResolvedSchema readAllAsResolvedSchema(AnnotatedType type) {
         if (shouldProcess(type.getType())) {
-            ModelConverterContextImpl context = new ModelConverterContextImpl(
-                    converters);
 
             ResolvedSchema resolvedSchema = new ResolvedSchema();
             resolvedSchema.schema = context.resolve(type);
@@ -105,8 +107,6 @@ public class ModelConverters {
     }
 
     public ResolvedSchema resolveAsResolvedSchema(AnnotatedType type) {
-        ModelConverterContextImpl context = new ModelConverterContextImpl(
-                converters);
 
         ResolvedSchema resolvedSchema = new ResolvedSchema();
         resolvedSchema.schema = context.resolve(type);

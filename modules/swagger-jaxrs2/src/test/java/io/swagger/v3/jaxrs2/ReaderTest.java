@@ -1,5 +1,6 @@
 package io.swagger.v3.jaxrs2;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.core.converter.AnnotatedType;
 import io.swagger.v3.core.converter.ModelConverter;
@@ -67,6 +68,7 @@ import io.swagger.v3.jaxrs2.resources.extensions.ParameterExtensionsResource;
 import io.swagger.v3.jaxrs2.resources.extensions.RequestBodyExtensionsResource;
 import io.swagger.v3.jaxrs2.resources.rs.ProcessTokenRestService;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.ExternalDocumentation;
 import io.swagger.v3.oas.models.OpenAPI;
@@ -79,6 +81,7 @@ import io.swagger.v3.oas.models.headers.Header;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.links.Link;
 import io.swagger.v3.oas.models.media.ArraySchema;
+import io.swagger.v3.oas.models.media.ComposedSchema;
 import io.swagger.v3.oas.models.media.IntegerSchema;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.parameters.Parameter;
@@ -89,6 +92,7 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.testng.annotations.Test;
 
+import javax.validation.constraints.AssertTrue;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -275,6 +279,45 @@ public class ReaderTest {
         Map<String, SecurityScheme> securitySchemes = components.getSecuritySchemes();
         assertNotNull(securitySchemes);
         assertEquals(SECURITY_SCHEMAS, securitySchemes.size());
+    }
+
+    @JsonSubTypes(@JsonSubTypes.Type(value = SubClass.class))
+    @io.swagger.v3.oas.annotations.media.Schema(discriminatorProperty = "type_", discriminatorMapping = {
+            @DiscriminatorMapping(value = "SubClass", schema = SubClass.class)})
+    private class SuperClass {
+        public int hi;
+    }
+
+    private class SubClass extends SuperClass{
+        public int whatsup;
+    }
+
+    private class AnotherController {
+
+        @Path("getSuperClass")
+        @io.swagger.v3.oas.annotations.Operation()
+        public void getSuperClass(SuperClass superClass) {
+        }
+    }
+
+    private class Controller {
+
+        @Path("getSubClass")
+        @io.swagger.v3.oas.annotations.Operation()
+        public void getSubClass(SubClass subClass) {
+        }
+    }
+
+    @Test(description = "Test a Set of classes")
+    public void testSetOfClassesSubtypeResolvedSeparatelyFirst() {
+
+        Set<Class<?>> classes = new HashSet<>();
+        classes.add(AnotherController.class);
+        classes.add(Controller.class);
+
+        Reader reader = new Reader(new OpenAPI());
+        OpenAPI openAPI = reader.read(classes);
+        assertTrue(openAPI.getComponents().getSchemas().get("SubClass") instanceof ComposedSchema);
     }
 
     @Test(description = "Deprecated Method")
@@ -2058,7 +2101,7 @@ public class ReaderTest {
                 "          type: string\n";
         SerializationMatchers.assertEqualsToYaml(openAPI, yaml);
     }
-    
+
     @Test(description = "Filter class return type")
     public void testTicket3074() {
         Reader reader = new Reader(new OpenAPI());
